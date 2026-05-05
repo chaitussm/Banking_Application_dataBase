@@ -1,0 +1,92 @@
+name: Database Weekly Monitor
+
+on:
+  workflow_dispatch:
+  schedule:
+    # Monday 01:00 IST = Sunday 19:30 UTC
+    - cron: "30 19 * * 0"
+
+jobs:
+  weekly-db-monitor:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      issues: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install sqlite3
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y sqlite3 make
+
+      - name: Rebuild database
+        run: make db-rebuild DB_FILE=weekly-banking.sqlite
+
+      - name: Verify database
+        id: verify
+        continue-on-error: true
+        run: make db-verify DB_FILE=weekly-banking.sqlite
+
+      - name: Generate DB report
+        if: always()
+        run: make db-report DB_FILE=weekly-banking.sqlite
+
+      - name: Upload DB report artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: weekly-db-health-report
+          path: reports/db-health-report.md
+          if-no-files-found: error
+
+      - name: Check for existing open monitor issue
+        if: steps.verify.outcome == 'failure'
+        id: existing_issue
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const query = `repo:${context.repo.owner}/${context.repo.repo} is:issue is:open in:title "[DB Weekly Monitor] Verification failed"`;
+            const result = await github.rest.search.issuesAndPullRequests({ q: query, per_page: 1 });
+            const hasOpenIssue = result.data.total_count > 0;
+
+            core.setOutput("has_open_issue", hasOpenIssue ? "true" : "false");
+            if (hasOpenIssue) {
+              core.setOutput("existing_issue_number", String(result.data.items[0].number));
+            }
+
+      - name: Create issue on verification failure
+        if: steps.verify.outcome == 'failure' && steps.existing_issue.outputs.has_open_issue != 'true'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const runUrl = `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
+            const title = `[DB Weekly Monitor] Verification failed - ${new Date().toISOString().slice(0, 10)}`;
+            const body = [
+              "Automated weekly database monitor detected a verification failure.",
+              "",
+              `- Workflow run: ${runUrl}`,
+              `- Workflow: ${context.workflow}`,
+              `- Commit: ${context.sha}`,
+              "",
+              "Please inspect artifacts and logs, then fix the failing check."
+            ].join("\n");
+
+            await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title,
+              body
+            });
+
+      - name: Reuse existing open issue
+        if: steps.verify.outcome == 'failure' && steps.existing_issue.outputs.has_open_issue == 'true'
+        run: |
+          echo "Open issue already exists: #${{ steps.existing_issue.outputs.existing_issue_number }}"
+
+      - name: Fail workflow if verification failed
+        if: steps.verify.outcome == 'failure'
+        run: |
+          echo "Database verification failed. Issue created or reused."
+          exit 1

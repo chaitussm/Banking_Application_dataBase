@@ -1,0 +1,11 @@
+# SQLite database artifacts
+*.sqlite
+*.sqlite3
+*.db
+*.db-shm
+*.db-wal
+*.sqlite-shm
+*.sqlite-wal
+
+# OS/editor artifacts
+.DS_Store
