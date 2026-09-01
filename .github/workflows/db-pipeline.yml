@@ -21,28 +21,30 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Install sqlite3
+      - name: Install SQLite tooling
         run: |
           sudo apt-get update
           sudo apt-get install -y sqlite3 make
 
-      - name: Rebuild database
+      - name: Rebuild database from migrations
         run: make db-rebuild DB_FILE=ci-banking.sqlite
 
-      - name: Verify database
+      - name: Verify schema and integrity
         run: make db-verify DB_FILE=ci-banking.sqlite
 
-      - name: Generate DB report
+      - name: Generate health reports
         run: make db-report DB_FILE=ci-banking.sqlite
 
-      - name: Upload DB report artifact
+      - name: Publish health reports
         uses: actions/upload-artifact@v4
         with:
           name: db-health-report
-          path: reports/db-health-report.md
+          path: |
+            reports/db-health-report.md
+            reports/db-health-report.html
           if-no-files-found: error
 
-      - name: Upload DB snapshot artifact
+      - name: Publish database snapshot
         uses: actions/upload-artifact@v4
         with:
           name: ci-banking-sqlite

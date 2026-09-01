@@ -39,3 +39,4 @@ db-rebuild:
 db-report:
 	$(MAKE) scripts-chmod
 	bash scripts/generate_db_report.sh "$(DB_FILE)" "reports/db-health-report.md"
+	bash scripts/generate_db_report.sh "$(DB_FILE)" "reports/db-health-report.html"

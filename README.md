@@ -110,6 +110,7 @@ Pipeline steps:
 3. Generate report (`make db-report`)
 4. Upload artifacts:
 	 - `reports/db-health-report.md`
+	 - `reports/db-health-report.html` (responsive, self-contained health dashboard)
 	 - `ci-banking.sqlite`
 
 ## Weekly Monitoring Pipeline
@@ -124,7 +125,7 @@ Weekly pipeline behavior:
 
 1. Rebuild database
 2. Run verification checks
-3. Generate/upload health report artifact
+3. Generate/upload Markdown and responsive HTML health report artifacts
 4. If verification fails, automatically create a GitHub issue with run link and context
 5. Duplicate protection: if an open weekly monitor failure issue already exists, workflow reuses it and does not open another one
 

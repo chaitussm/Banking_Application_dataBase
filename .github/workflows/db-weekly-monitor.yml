@@ -29,16 +29,18 @@ jobs:
         continue-on-error: true
         run: make db-verify DB_FILE=weekly-banking.sqlite
 
-      - name: Generate DB report
+      - name: Generate health reports
         if: always()
         run: make db-report DB_FILE=weekly-banking.sqlite
 
-      - name: Upload DB report artifact
+      - name: Publish health reports
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: weekly-db-health-report
-          path: reports/db-health-report.md
+          path: |
+            reports/db-health-report.md
+            reports/db-health-report.html
           if-no-files-found: error
 
       - name: Check for existing open monitor issue

@@ -52,7 +52,7 @@ This folder contains a migration-first database framework aligned with the upstr
 - `make db-unseed`: delete seed records without dropping schema
 - `make db-down`: drop schema objects (tables and indexes)
 - `make db-rebuild`: run full teardown then initialize schema + seed
-- `make db-report`: generate Markdown health report at `reports/db-health-report.md`
+- `make db-report`: generate Markdown and self-contained HTML health reports at `reports/db-health-report.md` and `reports/db-health-report.html`
 - `.github/workflows/db-pipeline.yml`: daily CI pipeline at 01:00 AM IST
 - `.github/workflows/db-weekly-monitor.yml`: weekly monitor at 01:00 AM IST (Monday), opens issue on failure
 
