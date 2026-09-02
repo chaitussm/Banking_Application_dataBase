@@ -27,26 +27,68 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: Prepare report workspace
+        run: mkdir -p "${{ env.REPORT_DIR }}"
+
       - name: Set up database tooling
         run: |
           sudo apt-get update
           sudo apt-get install -y sqlite3 make
 
       - name: Rebuild database from migrations
-        run: make db-rebuild DB_FILE="${{ env.DB_FILE }}"
+        id: rebuild
+        continue-on-error: true
+        run: |
+          set -o pipefail
+          make db-rebuild DB_FILE="${{ env.DB_FILE }}" 2>&1 | tee "${{ env.REPORT_DIR }}/rebuild.log"
 
       - name: Verify schema and integrity
         id: verify
+        if: always() && steps.rebuild.outcome == 'success'
         continue-on-error: true
-        run: make db-verify DB_FILE="${{ env.DB_FILE }}"
+        run: |
+          set -o pipefail
+          make db-verify DB_FILE="${{ env.DB_FILE }}" 2>&1 | tee "${{ env.REPORT_DIR }}/verify.log"
 
       - name: Generate health reports
-        if: always()
+        if: always() && steps.rebuild.outcome == 'success'
         run: make db-report DB_FILE="${{ env.DB_FILE }}"
 
       - name: Publish HTML report to workflow summary
-        if: always()
+        if: always() && steps.rebuild.outcome == 'success'
         run: make db-publish-summary
+
+      - name: Prepare email report
+        if: always()
+        env:
+          REBUILD_OUTCOME: ${{ steps.rebuild.outcome }}
+          VERIFY_OUTCOME: ${{ steps.verify.outcome != '' && steps.verify.outcome || 'skipped' }}
+          PIPELINE_NAME: ${{ github.workflow }}
+        run: make db-prepare-email DB_FILE="${{ env.DB_FILE }}"
+
+      - name: Check email notification configuration
+        id: email_config
+        if: always()
+        shell: bash
+        run: |
+          if [[ -n "${{ secrets.SMTP_SERVER }}" && -n "${{ secrets.SMTP_PASSWORD }}" && -n "${{ secrets.SMTP_TO }}" && -n "${{ secrets.SMTP_FROM }}" ]]; then
+            echo "configured=true" >> "${GITHUB_OUTPUT}"
+          else
+            echo "configured=false" >> "${GITHUB_OUTPUT}"
+            echo "Email secrets are not fully configured. Skipping email delivery."
+          fi
+
+      - name: Send pipeline report email
+        if: always() && steps.email_config.outputs.configured == 'true'
+        uses: ./.github/actions/send-db-report-email
+        with:
+          subject-file: ${{ env.REPORT_DIR }}/pipeline-email-subject.txt
+          html-file: ${{ env.REPORT_DIR }}/pipeline-email.html
+          smtp-server: ${{ secrets.SMTP_SERVER }}
+          smtp-port: ${{ secrets.SMTP_PORT || '587' }}
+          smtp-password: ${{ secrets.SMTP_PASSWORD }}
+          email-to: ${{ secrets.SMTP_TO }}
+          email-from: ${{ secrets.SMTP_FROM }}
 
       - name: Upload health report artifacts
         if: always()
@@ -56,7 +98,12 @@ jobs:
           path: |
             ${{ env.REPORT_DIR }}/db-health-report.md
             ${{ env.REPORT_DIR }}/db-health-report.html
-          if-no-files-found: error
+            ${{ env.REPORT_DIR }}/db-failure-report.html
+            ${{ env.REPORT_DIR }}/pipeline-email.html
+            ${{ env.REPORT_DIR }}/db-verification-failures.tsv
+            ${{ env.REPORT_DIR }}/rebuild.log
+            ${{ env.REPORT_DIR }}/verify.log
+          if-no-files-found: warn
 
       - name: Check for existing open monitor issue
         if: steps.verify.outcome == 'failure'
@@ -87,7 +134,8 @@ jobs:
               `- Workflow: ${context.workflow}`,
               `- Commit: ${context.sha}`,
               "",
-              "Inspect the workflow summary for the embedded HTML health report, download the report artifacts, and review logs before fixing the failing check."
+              "An HTML failure report was emailed when SMTP secrets are configured.",
+              "Inspect the workflow summary, report artifacts, and logs before fixing the failing check."
             ].join("\n");
 
             await github.rest.issues.create({
@@ -102,8 +150,8 @@ jobs:
         run: |
           echo "Open issue already exists: #${{ steps.existing_issue.outputs.existing_issue_number }}"
 
-      - name: Fail workflow if verification failed
-        if: steps.verify.outcome == 'failure'
+      - name: Fail workflow if pipeline checks failed
+        if: always() && (steps.rebuild.outcome == 'failure' || steps.verify.outcome == 'failure')
         run: |
-          echo "Database verification failed. Issue created or reused."
+          echo "Database verification failed. Issue created or reused when applicable."
           exit 1
