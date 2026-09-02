@@ -121,12 +121,11 @@ Both pipeline workflows send an HTML email after every run when these GitHub rep
 
 | Secret | Description |
 |---|---|
-| `DB_REPORT_SMTP_SERVER` | SMTP host (for example `smtp.gmail.com`) |
-| `DB_REPORT_SMTP_PORT` | SMTP port (optional, defaults to `587`) |
-| `DB_REPORT_SMTP_USERNAME` | SMTP username |
-| `DB_REPORT_SMTP_PASSWORD` | SMTP password or app password |
-| `DB_REPORT_EMAIL_TO` | Recipient email address |
-| `DB_REPORT_EMAIL_FROM` | Sender email address (optional) |
+| `SMTP_SERVER` | SMTP host (for example `smtp.gmail.com`) |
+| `SMTP_PORT` | SMTP port (optional, defaults to `587`) |
+| `SMTP_FROM` | Sender email address (also used as SMTP username) |
+| `SMTP_TO` | Recipient email address |
+| `SMTP_PASSWORD` | SMTP password or app password |
 
 - **Success:** sends the full health dashboard HTML report.
 - **Failure:** sends a failure report with the failed check, affected table, SQL query, error message, current table row counts, and rebuild/verify log excerpts.

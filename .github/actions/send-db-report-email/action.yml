@@ -16,8 +16,9 @@ inputs:
     required: false
     default: "587"
   smtp-username:
-    description: SMTP username
-    required: true
+    description: SMTP username (defaults to sender email when omitted)
+    required: false
+    default: ""
   smtp-password:
     description: SMTP password
     required: true
@@ -26,8 +27,7 @@ inputs:
     required: true
   email-from:
     description: Sender email address
-    required: false
-    default: ""
+    required: true
 
 runs:
   using: composite
@@ -64,10 +64,10 @@ runs:
       with:
         server_address: ${{ inputs.smtp-server }}
         server_port: ${{ inputs.smtp-port }}
-        username: ${{ inputs.smtp-username }}
+        username: ${{ inputs.smtp-username != '' && inputs.smtp-username || inputs.email-from }}
         password: ${{ inputs.smtp-password }}
         subject: ${{ steps.email_payload.outputs.subject }}
         to: ${{ inputs.email-to }}
-        from: ${{ inputs.email-from != '' && inputs.email-from || inputs.smtp-username }}
+        from: ${{ inputs.email-from }}
         html_body: ${{ steps.email_payload.outputs.html }}
         convert_markdown: false

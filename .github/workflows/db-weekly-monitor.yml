@@ -71,7 +71,7 @@ jobs:
         if: always()
         shell: bash
         run: |
-          if [[ -n "${{ secrets.DB_REPORT_SMTP_SERVER }}" && -n "${{ secrets.DB_REPORT_SMTP_USERNAME }}" && -n "${{ secrets.DB_REPORT_SMTP_PASSWORD }}" && -n "${{ secrets.DB_REPORT_EMAIL_TO }}" ]]; then
+          if [[ -n "${{ secrets.SMTP_SERVER }}" && -n "${{ secrets.SMTP_PASSWORD }}" && -n "${{ secrets.SMTP_TO }}" && -n "${{ secrets.SMTP_FROM }}" ]]; then
             echo "configured=true" >> "${GITHUB_OUTPUT}"
           else
             echo "configured=false" >> "${GITHUB_OUTPUT}"
@@ -84,12 +84,11 @@ jobs:
         with:
           subject-file: ${{ env.REPORT_DIR }}/pipeline-email-subject.txt
           html-file: ${{ env.REPORT_DIR }}/pipeline-email.html
-          smtp-server: ${{ secrets.DB_REPORT_SMTP_SERVER }}
-          smtp-port: ${{ secrets.DB_REPORT_SMTP_PORT || '587' }}
-          smtp-username: ${{ secrets.DB_REPORT_SMTP_USERNAME }}
-          smtp-password: ${{ secrets.DB_REPORT_SMTP_PASSWORD }}
-          email-to: ${{ secrets.DB_REPORT_EMAIL_TO }}
-          email-from: ${{ secrets.DB_REPORT_EMAIL_FROM }}
+          smtp-server: ${{ secrets.SMTP_SERVER }}
+          smtp-port: ${{ secrets.SMTP_PORT || '587' }}
+          smtp-password: ${{ secrets.SMTP_PASSWORD }}
+          email-to: ${{ secrets.SMTP_TO }}
+          email-from: ${{ secrets.SMTP_FROM }}
 
       - name: Upload health report artifacts
         if: always()
