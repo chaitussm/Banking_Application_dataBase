@@ -9,8 +9,8 @@ on:
       - master
   workflow_dispatch:
   schedule:
-    # 01:00 IST daily = 19:30 UTC previous day
-    - cron: "30 19 * * *"
+    # 12:00 AM IST daily = 18:30 UTC previous day
+    - cron: "30 18 * * *"
 
 concurrency:
   group: db-pipeline-${{ github.workflow }}-${{ github.ref }}

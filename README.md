@@ -100,8 +100,8 @@ make db-report
 	- Push to `master`
 	- Pull request to `master`
 	- Manual run (`workflow_dispatch`)
-	- Scheduled daily run at `01:00 AM IST`
-- Cron used in GitHub Actions (UTC): `30 19 * * *`
+	- Scheduled daily run at `12:00 AM IST`
+- Cron used in GitHub Actions (UTC): `30 18 * * *`
 
 Pipeline steps:
 
