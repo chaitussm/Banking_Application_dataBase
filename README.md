@@ -108,10 +108,28 @@ Pipeline steps:
 1. Rebuild database (`make db-rebuild`)
 2. Verify schema and integrity (`make db-verify`)
 3. Generate report (`make db-report`)
-4. Upload artifacts:
+4. Email the HTML health report on success, or a detailed failure report on error
+5. Upload artifacts:
 	 - `reports/db-health-report.md`
 	 - `reports/db-health-report.html` (responsive, self-contained health dashboard)
+	 - `reports/db-failure-report.html` (when verification or rebuild fails)
 	 - `ci-banking.sqlite`
+
+### Email Notifications
+
+Both pipeline workflows send an HTML email after every run when these GitHub repository secrets are configured:
+
+| Secret | Description |
+|---|---|
+| `DB_REPORT_SMTP_SERVER` | SMTP host (for example `smtp.gmail.com`) |
+| `DB_REPORT_SMTP_PORT` | SMTP port (optional, defaults to `587`) |
+| `DB_REPORT_SMTP_USERNAME` | SMTP username |
+| `DB_REPORT_SMTP_PASSWORD` | SMTP password or app password |
+| `DB_REPORT_EMAIL_TO` | Recipient email address |
+| `DB_REPORT_EMAIL_FROM` | Sender email address (optional) |
+
+- **Success:** sends the full health dashboard HTML report.
+- **Failure:** sends a failure report with the failed check, affected table, SQL query, error message, current table row counts, and rebuild/verify log excerpts.
 
 ## Weekly Monitoring Pipeline
 
@@ -126,8 +144,9 @@ Weekly pipeline behavior:
 1. Rebuild database
 2. Run verification checks
 3. Generate/upload Markdown and responsive HTML health report artifacts
-4. If verification fails, automatically create a GitHub issue with run link and context
-5. Duplicate protection: if an open weekly monitor failure issue already exists, workflow reuses it and does not open another one
+4. Email the HTML health report on success, or a detailed failure report on error
+5. If verification fails, automatically create a GitHub issue with run link and context
+6. Duplicate protection: if an open weekly monitor failure issue already exists, workflow reuses it and does not open another one
 
 ## Notes
 

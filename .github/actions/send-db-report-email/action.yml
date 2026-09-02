@@ -1,0 +1,73 @@
+name: Send database pipeline email report
+description: Send success or failure HTML report after pipeline execution
+
+inputs:
+  subject-file:
+    description: Path to the prepared email subject file
+    required: true
+  html-file:
+    description: Path to the prepared HTML email body
+    required: true
+  smtp-server:
+    description: SMTP server hostname
+    required: true
+  smtp-port:
+    description: SMTP server port
+    required: false
+    default: "587"
+  smtp-username:
+    description: SMTP username
+    required: true
+  smtp-password:
+    description: SMTP password
+    required: true
+  email-to:
+    description: Recipient email address
+    required: true
+  email-from:
+    description: Sender email address
+    required: false
+    default: ""
+
+runs:
+  using: composite
+  steps:
+    - name: Validate email report files
+      shell: bash
+      run: |
+        set -euo pipefail
+        if [[ ! -f "${{ inputs.subject-file }}" ]]; then
+          echo "Email subject file not found: ${{ inputs.subject-file }}" >&2
+          exit 1
+        fi
+        if [[ ! -f "${{ inputs.html-file }}" ]]; then
+          echo "Email HTML file not found: ${{ inputs.html-file }}" >&2
+          exit 1
+        fi
+
+    - name: Load email subject and HTML body
+      id: email_payload
+      shell: bash
+      run: |
+        set -euo pipefail
+        {
+          echo "subject<<EOF"
+          cat "${{ inputs.subject-file }}"
+          echo "EOF"
+          echo "html<<EOF"
+          cat "${{ inputs.html-file }}"
+          echo "EOF"
+        } >> "${GITHUB_OUTPUT}"
+
+    - name: Send HTML email report
+      uses: dawidd6/action-send-mail@v3
+      with:
+        server_address: ${{ inputs.smtp-server }}
+        server_port: ${{ inputs.smtp-port }}
+        username: ${{ inputs.smtp-username }}
+        password: ${{ inputs.smtp-password }}
+        subject: ${{ steps.email_payload.outputs.subject }}
+        to: ${{ inputs.email-to }}
+        from: ${{ inputs.email-from != '' && inputs.email-from || inputs.smtp-username }}
+        html_body: ${{ steps.email_payload.outputs.html }}
+        convert_markdown: false
