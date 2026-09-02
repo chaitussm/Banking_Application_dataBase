@@ -1,5 +1,5 @@
 name: Send database pipeline email report
-description: Send success or failure HTML report after pipeline execution
+description: Send rendered HTML and plain-text pipeline report emails
 
 inputs:
   subject-file:
@@ -8,6 +8,10 @@ inputs:
   html-file:
     description: Path to the prepared HTML email body
     required: true
+  plain-file:
+    description: Path to the prepared plain-text email body
+    required: false
+    default: ""
   smtp-server:
     description: SMTP server hostname
     required: true
@@ -45,29 +49,16 @@ runs:
           exit 1
         fi
 
-    - name: Load email subject and HTML body
-      id: email_payload
+    - name: Send rendered HTML email report
       shell: bash
-      run: |
-        set -euo pipefail
-        {
-          echo "subject<<EOF"
-          cat "${{ inputs.subject-file }}"
-          echo "EOF"
-          echo "html<<EOF"
-          cat "${{ inputs.html-file }}"
-          echo "EOF"
-        } >> "${GITHUB_OUTPUT}"
-
-    - name: Send HTML email report
-      uses: dawidd6/action-send-mail@v3
-      with:
-        server_address: ${{ inputs.smtp-server }}
-        server_port: ${{ inputs.smtp-port }}
-        username: ${{ inputs.smtp-username != '' && inputs.smtp-username || inputs.email-from }}
-        password: ${{ inputs.smtp-password }}
-        subject: ${{ steps.email_payload.outputs.subject }}
-        to: ${{ inputs.email-to }}
-        from: ${{ inputs.email-from }}
-        html_body: ${{ steps.email_payload.outputs.html }}
-        convert_markdown: false
+      env:
+        EMAIL_SUBJECT_FILE: ${{ inputs.subject-file }}
+        EMAIL_HTML_FILE: ${{ inputs.html-file }}
+        EMAIL_PLAIN_FILE: ${{ inputs.plain-file }}
+        SMTP_SERVER: ${{ inputs.smtp-server }}
+        SMTP_PORT: ${{ inputs.smtp-port }}
+        SMTP_USERNAME: ${{ inputs.smtp-username != '' && inputs.smtp-username || inputs.email-from }}
+        SMTP_PASSWORD: ${{ inputs.smtp-password }}
+        SMTP_FROM: ${{ inputs.email-from }}
+        SMTP_TO: ${{ inputs.email-to }}
+      run: python3 scripts/send_pipeline_email.py

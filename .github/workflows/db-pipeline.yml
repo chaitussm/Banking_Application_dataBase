@@ -89,6 +89,7 @@ jobs:
         with:
           subject-file: ${{ env.REPORT_DIR }}/pipeline-email-subject.txt
           html-file: ${{ env.REPORT_DIR }}/pipeline-email.html
+          plain-file: ${{ env.REPORT_DIR }}/pipeline-email-plain.txt
           smtp-server: ${{ secrets.SMTP_SERVER }}
           smtp-port: ${{ secrets.SMTP_PORT || '587' }}
           smtp-password: ${{ secrets.SMTP_PASSWORD }}
