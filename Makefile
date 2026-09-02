@@ -1,9 +1,9 @@
 DB_FILE ?= banking.sqlite
 
-.PHONY: db-init db-reset db-seed db-inspect db-verify db-unseed db-down db-rebuild db-report scripts-chmod
+.PHONY: db-init db-reset db-seed db-inspect db-verify db-unseed db-down db-rebuild db-report db-publish-summary scripts-chmod
 
 scripts-chmod:
-	chmod +x scripts/init_db.sh scripts/verify_db.sh scripts/generate_db_report.sh
+	chmod +x scripts/init_db.sh scripts/verify_db.sh scripts/generate_db_report.sh scripts/publish_github_summary.sh
 
 db-init:
 	$(MAKE) scripts-chmod
@@ -40,3 +40,7 @@ db-report:
 	$(MAKE) scripts-chmod
 	bash scripts/generate_db_report.sh "$(DB_FILE)" "reports/db-health-report.md"
 	bash scripts/generate_db_report.sh "$(DB_FILE)" "reports/db-health-report.html"
+
+db-publish-summary:
+	$(MAKE) scripts-chmod
+	bash scripts/publish_github_summary.sh "reports/db-health-report.html" "reports/db-health-report.md"

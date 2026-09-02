@@ -6,41 +6,56 @@ on:
     # Monday 01:00 IST = Sunday 19:30 UTC
     - cron: "30 19 * * 0"
 
+concurrency:
+  group: db-weekly-monitor-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  DB_FILE: weekly-banking.sqlite
+  REPORT_DIR: reports
+
 jobs:
   weekly-db-monitor:
+    name: Weekly verification and alerting
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     permissions:
       contents: read
       issues: write
+
     steps:
-      - name: Checkout
+      - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Install sqlite3
+      - name: Set up database tooling
         run: |
           sudo apt-get update
           sudo apt-get install -y sqlite3 make
 
-      - name: Rebuild database
-        run: make db-rebuild DB_FILE=weekly-banking.sqlite
+      - name: Rebuild database from migrations
+        run: make db-rebuild DB_FILE="${{ env.DB_FILE }}"
 
-      - name: Verify database
+      - name: Verify schema and integrity
         id: verify
         continue-on-error: true
-        run: make db-verify DB_FILE=weekly-banking.sqlite
+        run: make db-verify DB_FILE="${{ env.DB_FILE }}"
 
       - name: Generate health reports
         if: always()
-        run: make db-report DB_FILE=weekly-banking.sqlite
+        run: make db-report DB_FILE="${{ env.DB_FILE }}"
 
-      - name: Publish health reports
+      - name: Publish HTML report to workflow summary
+        if: always()
+        run: make db-publish-summary
+
+      - name: Upload health report artifacts
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: weekly-db-health-report
           path: |
-            reports/db-health-report.md
-            reports/db-health-report.html
+            ${{ env.REPORT_DIR }}/db-health-report.md
+            ${{ env.REPORT_DIR }}/db-health-report.html
           if-no-files-found: error
 
       - name: Check for existing open monitor issue
@@ -72,7 +87,7 @@ jobs:
               `- Workflow: ${context.workflow}`,
               `- Commit: ${context.sha}`,
               "",
-              "Please inspect artifacts and logs, then fix the failing check."
+              "Inspect the workflow summary for the embedded HTML health report, download the report artifacts, and review logs before fixing the failing check."
             ].join("\n");
 
             await github.rest.issues.create({
