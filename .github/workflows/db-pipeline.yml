@@ -12,41 +12,58 @@ on:
     # 01:00 IST daily = 19:30 UTC previous day
     - cron: "30 19 * * *"
 
+concurrency:
+  group: db-pipeline-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  DB_FILE: ci-banking.sqlite
+  REPORT_DIR: reports
+
 jobs:
   db-checks:
+    name: Rebuild, verify, and publish health report
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     permissions:
       contents: read
+
     steps:
-      - name: Checkout
+      - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Install SQLite tooling
+      - name: Set up database tooling
         run: |
           sudo apt-get update
           sudo apt-get install -y sqlite3 make
 
       - name: Rebuild database from migrations
-        run: make db-rebuild DB_FILE=ci-banking.sqlite
+        run: make db-rebuild DB_FILE="${{ env.DB_FILE }}"
 
       - name: Verify schema and integrity
-        run: make db-verify DB_FILE=ci-banking.sqlite
+        run: make db-verify DB_FILE="${{ env.DB_FILE }}"
 
       - name: Generate health reports
-        run: make db-report DB_FILE=ci-banking.sqlite
+        run: make db-report DB_FILE="${{ env.DB_FILE }}"
 
-      - name: Publish health reports
+      - name: Publish HTML report to workflow summary
+        if: always()
+        run: make db-publish-summary
+
+      - name: Upload health report artifacts
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: db-health-report
           path: |
-            reports/db-health-report.md
-            reports/db-health-report.html
+            ${{ env.REPORT_DIR }}/db-health-report.md
+            ${{ env.REPORT_DIR }}/db-health-report.html
           if-no-files-found: error
 
-      - name: Publish database snapshot
+      - name: Upload database snapshot
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: ci-banking-sqlite
-          path: ci-banking.sqlite
+          path: ${{ env.DB_FILE }}
           if-no-files-found: error
